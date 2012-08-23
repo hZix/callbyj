@@ -65,12 +65,12 @@ public class Utils {
 	 * @param bytes the bytes
 	 * @return the byte[]
 	 */
-	public static byte[] gainSamle(byte[] bytes) {
+	public static byte[] gainSample(byte[] bytes, double factor) {
 		short[] out = new short[bytes.length/2];
 		ByteBuffer bb = ByteBuffer.wrap(bytes);
 		bb.order(ByteOrder.LITTLE_ENDIAN);
 		for (int i = 0; i < out.length; i++) {
-			out[i] = (short) (bb.getShort() * 2);
+			out[i] = (short) (bb.getShort() * factor);
 		}
 		ByteBuffer a = ByteBuffer.allocate(bytes.length);
 		a.order(ByteOrder.LITTLE_ENDIAN);
