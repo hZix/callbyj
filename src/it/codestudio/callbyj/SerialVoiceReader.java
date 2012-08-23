@@ -81,20 +81,28 @@ public class SerialVoiceReader implements Runnable{
 			Info infos = new Info(SourceDataLine.class, af);
 			SourceDataLine dataLine  = (SourceDataLine) AudioSystem.getLine(infos);
 			dataLine.open(dataLine.getFormat(),audioBufferSize);						
-			dataLine.start();			
+			dataLine.start();	
+			//Add initial delay to allow initial buffer fill (60ms is the size in time of audioBufferSize)
+			Thread.sleep(60);
 			while (running){	
 				int av = dataLine.available();
-				if(av >= 0){
+				if(av > 0){						
 					byte[] buffer = new byte[av];
-					int bytesReadFromSerial = this.in.read(buffer,0,av);
-					if(bytesReadFromSerial > -1){
-						AudioInputStream audioInputStream = new AudioInputStream(new ByteArrayInputStream(buffer),af,av/2);
+					//Fill buffer until byte are available on dataLine (sometime due to line delay not all byte are available on first read)
+					int offset = 0;
+					int numRead = 0;
+					while (offset < buffer.length && (numRead = this.in.read(buffer, offset, buffer.length - offset)) >= 0) {
+						offset += numRead;
+					}
+					//Process buffer
+					if(offset >= 2){
+						AudioInputStream audioInputStream = new AudioInputStream(new ByteArrayInputStream(buffer),af,offset/2);
 						byte[] audioBuffer = new byte[av];
 						int bytesToWriteToAudioLine = 0;
 						while (bytesToWriteToAudioLine != -1) { 
 							bytesToWriteToAudioLine = audioInputStream.read(audioBuffer, 0, 2);
 							if (bytesToWriteToAudioLine >= 0){
-								dataLine.write(audioBuffer, 0, bytesToWriteToAudioLine);
+								dataLine.write(audioBuffer, 0, bytesToWriteToAudioLine);								
 							}
 						}
 						audioInputStream.close();

@@ -113,14 +113,19 @@ public class SerialVoiceWriter implements Runnable
 				Info infos = new Info(TargetDataLine.class, af);
 				TargetDataLine dataLine  = (TargetDataLine) AudioSystem.getLine(infos);
 				dataLine.open(dataLine.getFormat(),audioBufferSize);
-				dataLine.start();
-				Thread.sleep(100);
+				dataLine.start();	
+				Thread.sleep(60);
 				while (running){
 					int av = dataLine.available();
 					if(av > 0){
+						//Fill buffer until byte are available on dataLine (sometime due to line delay not all byte are available on first read)
 						byte[] audioBuffer = new byte[av];
-						int bytesToReadFromAudioLine = dataLine.read(audioBuffer, 0, av);
-						this.out.write(audioBuffer,0,bytesToReadFromAudioLine);
+						int offset = 0;
+						int numRead = 0;
+						while (offset < audioBuffer.length && (numRead = dataLine.read(audioBuffer, offset, audioBuffer.length - offset)) >= 0) {
+							offset += numRead;
+						}
+						this.out.write(audioBuffer,0,offset);
 					}
 				}
 				dataLine.drain();
