@@ -72,7 +72,7 @@ public class ComManager
 	private MySerialPort voiceStreamCommPort;
 
 	/** The Constant af. */
-	private static final AudioFormat af = new  AudioFormat(Encoding.PCM_SIGNED, 8000, 16, 1, 2, 50, false);
+	private static final AudioFormat af = new  AudioFormat(Encoding.PCM_SIGNED , 8000, 16, 1, 2, 8000, false);
 
 	/** The stream port nmae. */
 	private String streamPortNmae;
