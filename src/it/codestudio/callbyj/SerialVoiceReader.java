@@ -20,11 +20,9 @@
  */
 package it.codestudio.callbyj;
 
-import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 
 import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine.Info;
 import javax.sound.sampled.SourceDataLine;
@@ -58,7 +56,7 @@ public class SerialVoiceReader implements Runnable{
 	private int samplesPerFrame = 160;
 
 	/** The audio buffer size. */
-	private int audioBufferSize = samplesPerFrame * 2 * 3; //60ms delay
+	private int audioBufferSize = samplesPerFrame * 2 ; //20ms delay
 
 	/**
 	 * Instantiates a new serial voice reader.
@@ -80,35 +78,17 @@ public class SerialVoiceReader implements Runnable{
 		{
 			Info infos = new Info(SourceDataLine.class, af);
 			SourceDataLine dataLine  = (SourceDataLine) AudioSystem.getLine(infos);
-			dataLine.open(dataLine.getFormat(),audioBufferSize);						
+			dataLine.open(dataLine.getFormat(),audioBufferSize*4);						
 			dataLine.start();	
-			//Add initial delay to allow initial buffer fill (60ms is the size in time of audioBufferSize)
-			Thread.sleep(60);
-			while (running){	
-				int av = dataLine.available();
-				if(av > 0){						
-					byte[] buffer = new byte[av];
-					//Fill buffer until byte are available on dataLine (sometime due to line delay not all byte are available on first read)
-					int offset = 0;
-					int numRead = 0;
-					while (offset < buffer.length && (numRead = this.in.read(buffer, offset, buffer.length - offset)) >= 0) {
-						offset += numRead;
-					}
-					//Process buffer
-					if(offset >= 2){
-						AudioInputStream audioInputStream = new AudioInputStream(new ByteArrayInputStream(buffer),af,offset/2);
-						byte[] audioBuffer = new byte[av];
-						int bytesToWriteToAudioLine = 0;
-						while (bytesToWriteToAudioLine != -1) { 
-							bytesToWriteToAudioLine = audioInputStream.read(audioBuffer, 0, 2);
-							if (bytesToWriteToAudioLine >= 0){
-								dataLine.write(audioBuffer, 0, bytesToWriteToAudioLine);								
-							}
-						}
-						audioInputStream.close();
-						audioInputStream = null; 
-					}
+			while (running){						
+				byte[] buffer = new byte[audioBufferSize];
+				//Fill buffer until byte are available on dataLine (sometime due to line delay not all byte are available on first read)
+				int offset = 0;
+				int numRead = 0;
+				while (offset < buffer.length && (numRead = this.in.read(buffer, offset, buffer.length - offset)) >= 0) {
+					offset += numRead;
 				}
+				dataLine.write(buffer, 0, offset);	
 			}
 			dataLine.drain();
 			dataLine.flush();

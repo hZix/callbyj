@@ -63,7 +63,7 @@ public class SerialVoiceWriter implements Runnable
 	private int samplesPerFrame = 160;
 
 	/** The audio buffer size. */
-	private int audioBufferSize = samplesPerFrame * 3 * 2; //60ms delay
+	private int audioBufferSize = samplesPerFrame * 2; //20ms delay
 
 	/**
 	 * Instantiates a new serial voice writer.
@@ -93,10 +93,10 @@ public class SerialVoiceWriter implements Runnable
 				while (running){
 					if(file != null){
 						int offset = 0;
-						byte[] buffer = new byte[320];
-						if((offset = file.read(buffer,offset,320)) > 0){
-							AudioInputStream audioInputStream = new AudioInputStream(new ByteArrayInputStream(buffer),af,320);	
-							byte[] buffer2 = new byte[320];
+						byte[] buffer = new byte[audioBufferSize];
+						if((offset = file.read(buffer,offset,audioBufferSize)) > 0){
+							AudioInputStream audioInputStream = new AudioInputStream(new ByteArrayInputStream(buffer),af,audioBufferSize);	
+							byte[] buffer2 = new byte[audioBufferSize];
 							while ( (audioInputStream.read(buffer2)) > 0 ){
 								this.out.write(buffer2);
 							} 
@@ -112,22 +112,18 @@ public class SerialVoiceWriter implements Runnable
 			}else{
 				Info infos = new Info(TargetDataLine.class, af);
 				TargetDataLine dataLine  = (TargetDataLine) AudioSystem.getLine(infos);
-				dataLine.open(dataLine.getFormat(),audioBufferSize);
+				dataLine.open(dataLine.getFormat(),audioBufferSize*20);
 				dataLine.start();	
-				Thread.sleep(60);
+				byte[] audioBuffer = new byte[audioBufferSize];
 				while (running){
-					int av = dataLine.available();
-					if(av > 0){
-						//Fill buffer until byte are available on dataLine (sometime due to line delay not all byte are available on first read)
-						byte[] audioBuffer = new byte[av];
-						int offset = 0;
-						int numRead = 0;
-						while (offset < audioBuffer.length && (numRead = dataLine.read(audioBuffer, offset, audioBuffer.length - offset)) >= 0) {
-							offset += numRead;
-						}
-						this.out.write(audioBuffer,0,offset);
+					int offset = 0;
+					int numRead = 0;
+					while (offset < audioBuffer.length && (numRead = dataLine.read(audioBuffer, offset, audioBuffer.length - offset)) > 0) {
+						offset += numRead;
 					}
+					this.out.write(audioBuffer);
 				}
+				dataLine.flush();
 				dataLine.drain();
 				dataLine.stop();
 				dataLine.close();
