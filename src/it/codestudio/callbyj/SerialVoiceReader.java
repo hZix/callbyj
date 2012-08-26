@@ -78,24 +78,25 @@ public class SerialVoiceReader implements Runnable{
 		{
 			Info infos = new Info(SourceDataLine.class, af);
 			SourceDataLine dataLine  = (SourceDataLine) AudioSystem.getLine(infos);
-			dataLine.open(dataLine.getFormat(),audioBufferSize*4);						
+			dataLine.open(dataLine.getFormat(),audioBufferSize*2);						
 			dataLine.start();	
 			while (running){						
 				byte[] buffer = new byte[audioBufferSize];
 				//Fill buffer until byte are available on dataLine (sometime due to line delay not all byte are available on first read)
 				int offset = 0;
 				int numRead = 0;
-				while (offset < buffer.length && (numRead = this.in.read(buffer, offset, buffer.length - offset)) >= 0) {
+				while (running && (offset < buffer.length && (numRead = this.in.read(buffer, offset, buffer.length - offset)) >= 0)) {
 					offset += numRead;
 				}
-				dataLine.write(buffer, 0, offset);	
+				if(offset>=0){
+					dataLine.write(buffer, 0, offset);	
+				}
 			}
-			dataLine.drain();
-			dataLine.flush();
+			dataLine.flush();	
 			dataLine.stop();
 			dataLine.close();
 			dataLine = null;
-			logger.debug("Terminated");
+			logger.debug("SourceDataLine Terminated");
 		}
 		catch ( Exception e )
 		{
