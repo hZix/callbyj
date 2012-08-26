@@ -228,7 +228,7 @@ public class ComManager
 			this.startCall();	
 			this.sendCommandToModem(ATCommands.OPEN_VOICE_STREAM);			
 		}
-		if(response.equals(ATCommandReponses.INCOMING_CALL.getModemResponseString())){
+		if(response.contains(ATCommandReponses.INCOMING_CALL.getModemResponseString())){
 			this.incomingCall = true;
 		}
 		if(response.contains(ATCommandReponses.INCOMING_CALL_INFO.getModemResponseString())){
@@ -292,7 +292,7 @@ public class ComManager
 		String commandComp = command.getModemCommandString().replaceAll("<par>", parameter);
 		logger.info("Send command to serial port: " + commandComp);
 		writeDos.write((commandComp+"\r\n").getBytes());
-		writeDos.flush();
+		writeDos.flush();	
 	}
 
 	/**

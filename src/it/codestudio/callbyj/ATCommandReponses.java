@@ -47,7 +47,7 @@ public enum ATCommandReponses {
 	CALL_ESTABLISHED("^CONN:1,0"),
 	
 	/** The incoming call. */
-	INCOMING_CALL("CRING:VOICE"),
+	INCOMING_CALL("CRING: VOICE"),
 	
 	/** The incoming call info. */
 	INCOMING_CALL_INFO("CLIP"),
