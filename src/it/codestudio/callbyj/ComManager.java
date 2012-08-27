@@ -169,6 +169,7 @@ public class ComManager
 	 * @throws Exception the exception
 	 */
 	private void endCall () throws Exception {
+		this.incomingCall = false;
 		if(serialVoiceReader != null){
 			serialVoiceReader.terminate();
 			serialVoiceReader = null;
@@ -225,8 +226,11 @@ public class ComManager
 		logger.info("Received data from serial port: " + response.trim());
 
 		if(response.equals(ATCommandReponses.CALL_ESTABLISHED.getModemResponseString())){
-			this.startCall();	
-			this.sendCommandToModem(ATCommands.OPEN_VOICE_STREAM);			
+			//Start communication now only for incoming call, call started by this client start after number composition to hear ring sequence
+			if(this.incomingCall){
+				this.startCall();	
+				this.sendCommandToModem(ATCommands.OPEN_VOICE_STREAM);	
+			}
 		}
 		if(response.contains(ATCommandReponses.INCOMING_CALL.getModemResponseString())){
 			this.incomingCall = true;
@@ -293,6 +297,11 @@ public class ComManager
 		logger.info("Send command to serial port: " + commandComp);
 		writeDos.write((commandComp+"\r\n").getBytes());
 		writeDos.flush();	
+		//If command is start call open voice stream now to hear ring sequence
+		if(command.equals(ATCommands.CALL)){
+			this.startCall();	
+			this.sendCommandToModem(ATCommands.OPEN_VOICE_STREAM);			
+		}
 	}
 
 	/**
