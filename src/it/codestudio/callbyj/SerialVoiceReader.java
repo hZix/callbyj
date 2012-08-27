@@ -25,6 +25,7 @@ import java.io.DataInputStream;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine.Info;
+import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.SourceDataLine;
 
 import org.apache.log4j.Logger;
@@ -80,6 +81,14 @@ public class SerialVoiceReader implements Runnable{
 			SourceDataLine dataLine  = (SourceDataLine) AudioSystem.getLine(infos);
 			dataLine.open(dataLine.getFormat(),audioBufferSize*2);						
 			dataLine.start();	
+			
+			  // Adjust the volume on the output line to 100%
+	         if (dataLine.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+	             FloatControl volume = (FloatControl) dataLine.getControl(FloatControl.Type.MASTER_GAIN);
+	             logger.debug("sound volume  is " + volume.getValue() + " increasing volume to maximum " + volume.getMaximum());
+	            volume.setValue(volume.getMaximum());
+	         }
+
 			while (running){						
 				byte[] buffer = new byte[audioBufferSize];
 				//Fill buffer until byte are available on dataLine (sometime due to line delay not all byte are available on first read)
