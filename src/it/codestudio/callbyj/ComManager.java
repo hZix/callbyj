@@ -20,6 +20,10 @@
  */
 package it.codestudio.callbyj;
 
+import gnu.io.CommPort;
+import gnu.io.CommPortIdentifier;
+import gnu.io.SerialPort;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.PipedInputStream;
@@ -58,7 +62,7 @@ public class ComManager
 			if(ComManager.instance == null){
 				ComManager.instance = new ComManager();
 				ComManager.instance.setCommandPortName(commandPortName);
-				ComManager.instance.setStreamPortNmae(streamPortName);
+				ComManager.instance.setStreamPortName(streamPortName);
 				ComManager.instance.setPlayMessage(playMessage);
 				//ComManager.instance.startCall();
 			}
@@ -69,13 +73,13 @@ public class ComManager
 	}
 
 	/** The voice stream comm port. */
-	private MySerialPort voiceStreamCommPort;
+	private SerialPort voiceStreamCommPort;
 
 	/** The Constant af. */
 	private static final AudioFormat af = new  AudioFormat(Encoding.PCM_SIGNED , 8000, 16, 1, 2, 8000, false);
 
 	/** The stream port nmae. */
-	private String streamPortNmae;
+	private String streamPortName;
 
 	/** The command port name. */
 	private String commandPortName;
@@ -83,38 +87,11 @@ public class ComManager
 	/** The play message. */
 	private Boolean playMessage;
 
-	/** The buffer. */
-	private final int BUFFER = 2048;
-
-	/** The write pout. */
-	private PipedOutputStream writePout;
-
-	/** The write pin. */
-	private PipedInputStream writePin;
-
-	/** The read pout. */
-	private PipedOutputStream readPout;
-
-	/** The read pin. */
-	private PipedInputStream readPin;
-
-	/** The read dis. */
-	private DataInputStream readDis;
-
-	/** The write dos. */
-	private DataOutputStream writeDos;
-
 	/** The incoming call. */
 	private Boolean incomingCall = false;
 
-	/** The pin ok. */
-	private Boolean pinOk = false;
-
 	/** The instance. */
 	private static ComManager instance;
-
-	/** The prev req command. */
-	private ATCommands prevReqCommand;
 
 	/** The pin. */
 	private String pin;
@@ -128,11 +105,8 @@ public class ComManager
 	/** The serial command reader. */
 	private SerialCommandReader serialCommandReader;
 
-	/** The serial command writer. */
-	private SerialCommandWriter serialCommandWriter;
-
 	/** The modem com port. */
-	private MySerialPort modemComPort;
+	private SerialPort modemComPort;
 
 	/** The voice input stream. */
 	private DataInputStream voiceInputStream;
@@ -154,13 +128,6 @@ public class ComManager
 	private ComManager() throws Exception
 	{
 		super();
-		writePin = new PipedInputStream(BUFFER);
-		writePout = new PipedOutputStream(writePin);
-		writeDos = new DataOutputStream(writePout);
-
-		readPin = new PipedInputStream(BUFFER);
-		readPout = new PipedOutputStream(readPin);	
-		readDis = new DataInputStream(readPin);
 	}
 
 	/**
@@ -185,7 +152,9 @@ public class ComManager
 			voiceOutputStream.close();
 		}
 		if(voiceStreamCommPort != null){
-			voiceStreamCommPort.disconnect();
+			voiceStreamCommPort.notifyOnDataAvailable(false);
+			voiceStreamCommPort.removeEventListener();
+			voiceStreamCommPort.close();
 			voiceStreamCommPort = null;
 		}
 		//Thread jsed = Utils.getThread("Java Sound Event Dispatcher");
@@ -227,10 +196,10 @@ public class ComManager
 
 		if(response.equals(ATCommandReponses.CALL_ESTABLISHED.getModemResponseString())){
 			//Start communication now only for incoming call, call started by this client start after number composition to hear ring sequence
-			if(this.incomingCall){
-				this.startCall();	
-				this.sendCommandToModem(ATCommands.OPEN_VOICE_STREAM);	
-			}
+			//if(this.incomingCall){
+			this.startCall();	
+			this.sendCommandToModem(ATCommands.OPEN_VOICE_STREAM);	
+			//}
 		}
 		if(response.contains(ATCommandReponses.INCOMING_CALL.getModemResponseString())){
 			this.incomingCall = true;
@@ -253,7 +222,6 @@ public class ComManager
 
 		if(response.equals(ATCommandReponses.PIN_CORRECT.getModemResponseString())){
 			logger.info("Pin is valid");	
-			this.pinOk = true;
 			this.pin = "";
 			initCommand();		
 		}
@@ -292,15 +260,14 @@ public class ComManager
 	 * @throws Exception the exception
 	 */
 	public void sendCommandToModem(ATCommands command, String parameter) throws Exception{
-		prevReqCommand = command;
 		String commandComp = command.getModemCommandString().replaceAll("<par>", parameter);
 		logger.info("Send command to serial port: " + commandComp);
-		writeDos.write((commandComp+"\r\n").getBytes());
-		writeDos.flush();	
-		//If command is start call open voice stream now to hear ring sequence
-		if(command.equals(ATCommands.CALL)){
-			this.startCall();	
-			this.sendCommandToModem(ATCommands.OPEN_VOICE_STREAM);			
+		commandOutputStream.write((commandComp+"\r").getBytes());	
+		//writeDos = new DataOutputStream(writePout);
+		//writeDos.write((commandComp+"\r").getBytes());	
+		//writeDos.close();
+		synchronized (this) {
+			this.wait(10);
 		}
 	}
 
@@ -327,8 +294,8 @@ public class ComManager
 	 *
 	 * @param streamPortNmae the new stream port nmae
 	 */
-	public void setStreamPortNmae(String streamPortNmae) {
-		this.streamPortNmae = streamPortNmae;
+	public void setStreamPortName(String streamPortName) {
+		this.streamPortName = streamPortName;
 	}
 
 	/**
@@ -336,17 +303,23 @@ public class ComManager
 	 *
 	 * @throws Exception the exception
 	 */
-	private void startCall () throws Exception
-	{
-		logger.info("Try open serial port with ID="+this.streamPortNmae);
-		voiceStreamCommPort = new MySerialPort(this.streamPortNmae, 230400); 
-		voiceStreamCommPort.connect();
-		voiceInputStream =  new DataInputStream(voiceStreamCommPort.getInputStream());
-		voiceOutputStream = new DataOutputStream(voiceStreamCommPort.getOutputStream());
-		serialVoiceReader = new SerialVoiceReader(voiceInputStream,af);
-		serialVoiceWriter = new SerialVoiceWriter(voiceOutputStream,af,playMessage);
-		(new Thread(serialVoiceReader,"VoiceReader")).start();
-		(new Thread(serialVoiceWriter,"VoiceWriter")).start();
+	public void startCall () throws Exception
+	{	
+		CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(this.streamPortName);
+		if (portIdentifier.isCurrentlyOwned()) {
+			logger.error("Serial port " + this.streamPortName + " is currently in use");
+		}
+		CommPort commPort = portIdentifier.open(this.getClass().getName(), 2000);
+		if (commPort instanceof SerialPort) {
+			voiceStreamCommPort = (SerialPort) commPort;
+			voiceStreamCommPort.setSerialPortParams(230400, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
+			voiceInputStream =  new DataInputStream(voiceStreamCommPort.getInputStream());
+			voiceOutputStream = new DataOutputStream(voiceStreamCommPort.getOutputStream());
+			serialVoiceReader = new SerialVoiceReader(voiceInputStream,af);
+			serialVoiceWriter = new SerialVoiceWriter(voiceOutputStream,af,playMessage);
+			(new Thread(serialVoiceReader,"VoiceReader")).start();
+			(new Thread(serialVoiceWriter,"VoiceWriter")).start();
+		}
 
 	}
 
@@ -356,25 +329,28 @@ public class ComManager
 	 * @throws Exception the exception
 	 */
 	public void startModemCommandManager()  throws Exception{
-		modemComPort = new MySerialPort(this.commandPortName, 9600); 
-		modemComPort.connect();
-		modemComPort.notifyOnDataAvailable(true);
+		CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(this.commandPortName);
+		if (portIdentifier.isCurrentlyOwned()) {
+			logger.error("Serial port " + this.commandPortName + " is currently in use");
+		}
+		CommPort commPort = portIdentifier.open(this.getClass().getName(), 2000);
+		if (commPort instanceof SerialPort) {
+			modemComPort = (SerialPort) commPort;
+			modemComPort.setSerialPortParams(9600, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
 
-		commandInputStream =  new DataInputStream(modemComPort.getInputStream());		
-		serialCommandReader = new SerialCommandReader(commandInputStream,this);
-		modemComPort.addEventListener(serialCommandReader);
-		
-		commandOutputStream =  new DataOutputStream(modemComPort.getOutputStream());		
-		serialCommandWriter = new SerialCommandWriter(commandOutputStream,writePin);
-		
-		
-		Thread t = new Thread(serialCommandWriter,"SerialCommandWriter");
-		t.start();
+			modemComPort.notifyOnDataAvailable(true);
 
-		this.sendCommandToModem(ATCommands.DISABLE_ECHO);
-		this.sendCommandToModem(ATCommands.DISABLE_DIAGNOSTIC);	
-		this.sendCommandToModem(ATCommands.END_CALL);
-		this.sendCommandToModem(ATCommands.CHECK_PIN);
+			commandInputStream =  new DataInputStream(modemComPort.getInputStream());		
+			serialCommandReader = new SerialCommandReader(commandInputStream,this);
+			modemComPort.addEventListener(serialCommandReader);
+
+			commandOutputStream =  new DataOutputStream(modemComPort.getOutputStream());
+
+			this.sendCommandToModem(ATCommands.DISABLE_ECHO);
+			this.sendCommandToModem(ATCommands.DISABLE_DIAGNOSTIC);	
+			this.sendCommandToModem(ATCommands.END_CALL);
+			this.sendCommandToModem(ATCommands.CHECK_PIN);
+		}
 	}
 
 	/**
@@ -383,18 +359,16 @@ public class ComManager
 	public void terminate(){
 		try{
 			endCall();
-			if(serialCommandWriter != null){
-				serialCommandWriter.terminate();
-				serialCommandWriter = null;
+			if(commandOutputStream != null){
+				commandOutputStream.close();
 			}
-			if(writeDos != null){
-				writeDos.close();
-			}
-			if(readDis != null){
-				readDis.close();
+			if(commandInputStream != null){
+				commandInputStream.close();
 			}
 			if(modemComPort != null){
-				modemComPort.disconnect();
+				modemComPort.notifyOnDataAvailable(false);
+				modemComPort.removeEventListener();
+				modemComPort.close();
 				modemComPort = null;
 			}
 		}catch (Exception e) {

@@ -121,7 +121,7 @@ public class SerialVoiceWriter implements Runnable
 					while (running && (offset < audioBuffer.length && (numRead = dataLine.read(audioBuffer, offset, audioBuffer.length - offset)) > 0)) {
 						offset += numRead;
 					}
-					if(offset>=0){
+					if(running && offset>=0){
 						this.out.write(audioBuffer);
 					}
 				}				

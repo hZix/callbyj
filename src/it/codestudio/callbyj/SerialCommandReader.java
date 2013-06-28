@@ -73,7 +73,7 @@ public class SerialCommandReader implements SerialPortEventListener{
 			int len = 0;
 			while ( ( data = in.read()) > -1 ){
 				buffer[len++] = (byte) data;
-				if ( data == '\n' ) {
+				if ( data == '\n' || data == '\r') {
 					break;
 				}				
 			}

@@ -60,8 +60,8 @@ public class CallByJ {
 	 */
 	public static void main ( String[] args )
 	{
-		options.addOption( "aCom", "audio_com", true, "Specify serial COM port for audio streaming" );
-		options.addOption( "cCom", "command_com", true, "Specify serial COM port for modem AT command" );
+		options.addOption( "aCom", "audio_com", true, "Specify serial COM port for audio streaming (3G APPLICATION ...)" );
+		options.addOption( "cCom", "command_com", true, "Specify serial COM port for modem AT command (PC UI INTERFACE ...)" );
 		options.addOption( "p", "play_message", false, "Play recorded message instead to respond with audio from mic" );
 		options.addOption("h", "help", false, "Print help for this application");
 		try{
@@ -119,6 +119,7 @@ public class CallByJ {
 						comManager.sendCommandToModem(ATCommands.END_CALL);
 					}
 					if (cmd.hasOption('t') ) {
+						comManager.sendCommandToModem(ATCommands.END_CALL);
 						comManager.terminate();
 						System.out.println("CallByJ closed!");
 						break;

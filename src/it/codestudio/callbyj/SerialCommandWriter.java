@@ -72,19 +72,17 @@ public class SerialCommandWriter implements Runnable
 	{
 		try{ 
 			int c = 0;
-			while (running && ( c = this.in.read()) > -1 ){
-				try {
-					this.out.write(c);				
-					Thread.sleep(100);
-				} catch (InterruptedException e) {
-					logger.error(e.getMessage(),e);
-				}
+			while (running && ( c = this.in.read()) > -1 ){				
+					this.out.write(c);		
+					synchronized (this) {
+						wait(10);
+					}
 			} 
-		}
-		catch ( IOException e )
-		{
+			this.in.close();
+			logger.info("SerialCommandWriter finished");
+		}catch ( Exception e ){
 			logger.error(e.getMessage(),e);
-		}            
+		}       
 	}
 
 	/**

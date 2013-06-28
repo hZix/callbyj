@@ -88,14 +88,13 @@ public class SerialVoiceReader implements Runnable{
 				while (running && (offset < buffer.length && (numRead = this.in.read(buffer, offset, buffer.length - offset)) >= 0)) {
 					offset += numRead;
 				}
-				if(offset>=0){
+				if(running && offset>=0){
 					dataLine.write(buffer, 0, offset);	
 				}
-			}
-			dataLine.flush();	
+			}	
 			dataLine.stop();
+			dataLine.drain();
 			dataLine.close();
-			dataLine = null;
 			logger.debug("SourceDataLine Terminated");
 		}
 		catch ( Exception e )
