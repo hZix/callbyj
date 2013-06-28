@@ -81,13 +81,13 @@ public class SerialVoiceReader implements Runnable{
 			SourceDataLine dataLine  = (SourceDataLine) AudioSystem.getLine(infos);
 			dataLine.open(dataLine.getFormat(),audioBufferSize*2);						
 			dataLine.start();	
-			
-			  // Adjust the volume on the output line to 100%
-	         if (dataLine.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-	             FloatControl volume = (FloatControl) dataLine.getControl(FloatControl.Type.MASTER_GAIN);
-	             logger.debug("sound volume  is " + volume.getValue() + " increasing volume to maximum " + volume.getMaximum());
-	            volume.setValue(volume.getMaximum());
-	         }
+
+			// Adjust the volume on the output line to 100%
+			if (dataLine.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+				FloatControl volume = (FloatControl) dataLine.getControl(FloatControl.Type.MASTER_GAIN);
+				logger.debug("Sound volume  is " + volume.getValue() + " increasing volume to maximum " + volume.getMaximum());
+				volume.setValue(volume.getMaximum());
+			}
 
 			while (running){						
 				byte[] buffer = new byte[audioBufferSize];

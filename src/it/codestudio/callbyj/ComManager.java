@@ -26,8 +26,6 @@ import gnu.io.SerialPort;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioFormat.Encoding;
@@ -196,10 +194,10 @@ public class ComManager
 
 		if(response.equals(ATCommandReponses.CALL_ESTABLISHED.getModemResponseString())){
 			//Start communication now only for incoming call, call started by this client start after number composition to hear ring sequence
-			//if(this.incomingCall){
-			this.startCall();	
-			this.sendCommandToModem(ATCommands.OPEN_VOICE_STREAM);	
-			//}
+			if(this.incomingCall){
+				this.startCall();	
+				this.sendCommandToModem(ATCommands.OPEN_VOICE_STREAM);	
+			}
 		}
 		if(response.contains(ATCommandReponses.INCOMING_CALL.getModemResponseString())){
 			this.incomingCall = true;
@@ -260,6 +258,7 @@ public class ComManager
 	 * @throws Exception the exception
 	 */
 	public void sendCommandToModem(ATCommands command, String parameter) throws Exception{
+		//If command is start call open voice stream now to hear ring sequence
 		String commandComp = command.getModemCommandString().replaceAll("<par>", parameter);
 		logger.info("Send command to serial port: " + commandComp);
 		commandOutputStream.write((commandComp+"\r").getBytes());	
@@ -268,6 +267,10 @@ public class ComManager
 		//writeDos.close();
 		synchronized (this) {
 			this.wait(10);
+		}
+		if(command.equals(ATCommands.CALL)){
+			this.startCall();	
+			this.sendCommandToModem(ATCommands.OPEN_VOICE_STREAM);		
 		}
 	}
 
